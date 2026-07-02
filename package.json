@@ -1,0 +1,19 @@
+{
+  "name": "hydration-pal",
+  "version": "1.0.0",
+  "description": "A kawaii cat-themed hydration reminder desktop app",
+  "main": "app/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  },
+  "build": {
+    "appId": "com.hydration-pal",
+    "productName": "喝水小助手",
+    "directories": { "output": "dist" },
+    "win": { "icon": "app/build/icon.png" }
+  }
+}

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+  html, body { width:170px; height:260px; background:transparent; overflow:hidden;
+    font-family:"PingFang SC","Microsoft YaHei",sans-serif; }
+
+  .wrap { position:relative; width:170px; height:260px;
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    padding-top:4px;
+    -webkit-app-region:drag; }
+
+  /* 提醒气泡 */
+  .bubble { position:absolute; top:0; left:50%; transform:translateX(-50%) scale(0);
+    max-width:158px; background:#fff; color:#ff6b9d; font-size:11px; line-height:1.4;
+    padding:6px 10px; border-radius:12px; text-align:center; font-weight:600;
+    box-shadow:0 4px 14px rgba(255,107,157,.35); opacity:0; white-space:pre-line;
+    transition:all .3s cubic-bezier(.34,1.56,.64,1); pointer-events:none; z-index:8; }
+  .bubble.show { transform:translateX(-50%) scale(1); opacity:1; }
+  .bubble::after { content:''; position:absolute; bottom:-5px; left:50%; transform:translateX(-50%);
+    border:5px solid transparent; border-top-color:#fff; border-bottom:0; }
+
+  /* 主SVG */
+  .cat-cup { display:block; -webkit-app-region:drag; }
+  .cat-cup.shake { animation:shake .5s ease; }
+  @keyframes shake {
+    0%,100%{transform:rotate(0)} 20%{transform:rotate(-5deg)} 40%{transform:rotate(5deg)}
+    60%{transform:rotate(-4deg)} 80%{transform:rotate(4deg)}
+  }
+
+  .tick-line { stroke:#cfd6e6; stroke-width:1.2; }
+  .tick-line.reached { stroke:#36a9d6; stroke-width:1.5; }
+  .tick-text { font-size:8.5px; font-weight:700; fill:#b3bace; font-family:"Microsoft YaHei",sans-serif; }
+  .tick-text.reached { fill:#2c97c4; }
+
+  /* 百分比药丸 */
+  .pct-pill { margin-top:3px; background:linear-gradient(135deg,#ff9ec7,#ff6b9d); color:#fff;
+    font-size:13px; font-weight:800; padding:4px 16px; border-radius:20px;
+    box-shadow:0 3px 10px rgba(255,107,157,.4); -webkit-app-region:no-drag; cursor:pointer; z-index:6; }
+
+  /* 快捷按钮 */
+  .quick-bar { height:26px; display:flex; gap:4px; align-items:center; justify-content:center;
+    margin-top:4px; opacity:0; transform:translateY(6px); transition:all .25s ease;
+    pointer-events:none; -webkit-app-region:no-drag; flex-wrap:wrap; width:170px; }
+  .wrap:hover .quick-bar { opacity:1; transform:translateY(0); pointer-events:auto; }
+  .qbtn { font-size:10px; font-weight:700; color:#fff; border:none; cursor:pointer;
+    padding:4px 7px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,.18);
+    transition:transform .12s ease; }
+  .qbtn:hover { transform:scale(1.12); }
+  .qbtn:active { transform:scale(.94); }
+  .qbtn:nth-child(1){ background:linear-gradient(135deg,#ffd86f,#fc6262); }
+  .qbtn:nth-child(2){ background:linear-gradient(135deg,#a0e9ff,#4ec3e0); }
+  .qbtn:nth-child(3){ background:linear-gradient(135deg,#c2f0a0,#5cc26a); }
+  .qbtn:nth-child(4){ background:linear-gradient(135deg,#e0c3fc,#8b7cf6); }
+  .qbtn:nth-child(5){ background:linear-gradient(135deg,#ffb6d9,#ff6b9d); }
+  .qbtn.undo { background:linear-gradient(135deg,#e6e6e6,#b6b6c2); }
+
+  /* 庆祝星星 */
+  .spark { position:absolute; font-size:14px; opacity:0; pointer-events:none; z-index:7; }
+  .wrap.celebrate .spark { animation:pop 1.2s ease forwards; }
+  .spark:nth-child(2){ top:50px; left:20px; animation-delay:0s; }
+  .spark:nth-child(3){ top:40px; right:22px; animation-delay:.15s; }
+  .spark:nth-child(4){ top:75px; left:10px; animation-delay:.3s; }
+  .spark:nth-child(5){ top:65px; right:10px; animation-delay:.2s; }
+  @keyframes pop {
+    0%{opacity:0;transform:translateY(0) scale(.4)}
+    40%{opacity:1;transform:translateY(-14px) scale(1.2)}
+    100%{opacity:0;transform:translateY(-28px) scale(.8)}
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <div class="bubble" id="bubble"></div>
+  <span class="spark">⭐</span><span class="spark">💖</span>
+  <span class="spark">✨</span><span class="spark">🌟</span>
+
+  <!-- 杯子 v6：圆柱裁剪合成 cup.png + water_crop -->
+  <svg class="cat-cup" id="cupSvg" width="170" height="140" viewBox="200 40 1140 940" overflow="visible">
+    <defs>
+      <clipPath id="waterClip">
+        <path d="M 278,207 A 480,50 0 0 0 1237,207 L 1237,700 A 480,50 0 0 1 278,700 Z"/>
+      </clipPath>
+      <clipPath id="catClip">
+        <rect x="255" y="-120" width="1000" height="1000"/>
+      </clipPath>
+    </defs>
+    <g clip-path="url(#waterClip)">
+      <image id="water" href="build/water_crop.png" x="278" y="700" width="959" height="60" preserveAspectRatio="none"/>
+    </g>
+    <g clip-path="url(#catClip)">
+      <image id="cat-1" href="build/cat_1s.png" x="416" y="255" width="684" height="741"/>
+      <image id="cat-2" href="build/cat_2s.png" x="416" y="255" width="684" height="741" style="display:none"/>
+      <image id="cat-3" href="build/cat_3s.png" x="416" y="-197" width="684" height="741" style="display:none"/>
+    </g>
+    <ellipse id="waterSurf" cx="758" cy="700" rx="0" ry="50" fill="rgba(180,230,255,0.55)" stroke="rgba(255,255,255,0.8)" stroke-width="3"/>
+    <image href="build/cup.png" x="0" y="0" width="1536" height="1024"/>
+  </svg>
+
+  <div class="pct-pill" id="pill" title="点击打开主界面">0%</div>
+  <div class="quick-bar" id="qbar"></div>
+</div>
+
+<script>
+  const wapi = window.api;
+  let st = null;
+
+  function render() {
+    if (!st) return;
+    const goal = st.settings.dailyGoal || 2000;
+    const total = st.today.total || 0;
+    const p = Math.max(0, Math.min(1, total / goal));
+
+    // 水位（素材坐标系 1536×1024）
+    const POOL_BOT = 700, POOL_TOP = 207, WH = POOL_BOT - POOL_TOP;
+    const wY = POOL_BOT - p * WH;
+    document.getElementById('water').setAttribute('y', wY);
+    document.getElementById('water').setAttribute('height', Math.ceil(POOL_BOT - wY + 60));
+    document.getElementById('waterSurf').setAttribute('cy', wY);
+    document.getElementById('waterSurf').setAttribute('rx', p > 0.01 ? '480' : '0');
+
+    // 三阶段猫：圈中心卡水面线 wY（canvas y = wY - 445）
+    const c1 = document.getElementById('cat-1');
+    const c2 = document.getElementById('cat-2');
+    const c3 = document.getElementById('cat-3');
+    c1.style.display = p <= 0 ? '' : 'none';
+    c2.style.display = (p > 0 && p < 1) ? '' : 'none';
+    c3.style.display = p >= 1 ? '' : 'none';
+    if (p > 0 && p < 1) {
+      c2.setAttribute('y', Math.round(wY - 445));
+    }
+
+    // 百分比
+    document.getElementById('pill').textContent = Math.round(p * 100) + '%';
+
+    // 快捷按钮
+    const qbar = document.getElementById('qbar');
+    qbar.innerHTML = '';
+    (st.settings.cupSizes || [100, 200, 300, 500]).slice(0, 5).forEach(ml => {
+      const b = document.createElement('button');
+      b.className = 'qbtn'; b.textContent = ml;
+      b.onclick = (e) => { e.stopPropagation(); wapi.addWater(ml); };
+      qbar.appendChild(b);
+    });
+    const undo = document.createElement('button');
+    undo.className = 'qbtn undo'; undo.textContent = '↩'; undo.title = '撤销上一次';
+    undo.onclick = (e) => { e.stopPropagation(); wapi.undoLast(); };
+    qbar.appendChild(undo);
+  }
+
+  function showBubble(text) {
+    const b = document.getElementById('bubble');
+    b.textContent = text; b.classList.add('show');
+    const svg = document.getElementById('cupSvg');
+    svg.classList.remove('shake'); void svg.offsetWidth; svg.classList.add('shake');
+    setTimeout(() => b.classList.remove('show'), 4000);
+  }
+
+  function celebrate(text) {
+    const wrap = document.getElementById('wrap');
+    wrap.classList.remove('celebrate'); void wrap.offsetWidth; wrap.classList.add('celebrate');
+    showBubble(text);
+    setTimeout(() => wrap.classList.remove('celebrate'), 1300);
+  }
+
+  document.getElementById('pill').addEventListener('click', (e) => {
+    e.stopPropagation(); wapi.openMain();
+  });
+  document.getElementById('cupSvg').addEventListener('dblclick', () => wapi.openMain());
+
+  wapi.onStateChanged(s => { st = s; render(); });
+  wapi.onReminder(d => {
+    if (d.type === 'celebrate') celebrate(d.text);
+    else showBubble(d.text);
+  });
+  wapi.getState().then(s => { st = s; render(); });
+</script>
+</body>
+</html>
