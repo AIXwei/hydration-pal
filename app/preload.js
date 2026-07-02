@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld('api', {
   updateSettings: (obj) => ipcRenderer.invoke('update-settings', obj),
   resume: () => ipcRenderer.invoke('resume'),
   openMain: () => ipcRenderer.invoke('open-main'),
+  winMinimize: () => ipcRenderer.invoke('win-minimize'),
+  winMaximize: () => ipcRenderer.invoke('win-maximize'),
+  winClose: () => ipcRenderer.invoke('win-close'),
   onStateChanged: (cb) => {
     ipcRenderer.on('stateChanged', (_, data) => cb(data));
   },

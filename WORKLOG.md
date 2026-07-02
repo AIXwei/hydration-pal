@@ -212,3 +212,23 @@ glass_back → ground → water_back(clip) → cat → water_front(clip) → gla
 cup.png / water_crop.png 仍在磁盘，直接还原。
 改动：index.html / floating.html SVG 恢复 cylindrical clipPath + waterSurf 椭圆 + cup.png 覆层；main-window.js / floating.html JS 恢复 POOL_BOT=700 POOL_TOP=207 + 移动 water image y/height + waterSurf cy/rx。new/ 目录素材保留不动。
 
+
+## 2026-07-02 21:20
+修复水底透视问题：
+- 将 clipPath 底部弧 sweep 从 1 改为 0（原来向外凸，现在向内凹，正确模拟杯底椭圆），ry 50→35
+- 新增 waterFloor 椭圆（cx=758 cy=700 rx=480 ry=35，半透明蓝色），随水位显隐，补全水底视觉深度感
+- index.html、floating.html、main-window.js 同步更新
+
+## 2026-07-02 22:09
+修复猫与水面不同步问题：
+- 根因：water_crop.png 顶部有 ~68px 气泡/透明区，实际波浪面在图像 y≈40，原来靠 waterSurf 椭圆掩盖偏差，删掉后问题暴露
+- 修法：计算 waveSvgY = wY + 40 * waterH / 745，猫_2 圈中心跟踪 waveSvgY 而非 wY
+- main-window.js 和 floating.html 同步更新
+
+## 2026-07-03 00:31
+主窗口改无边框 + 自定义窗口控制：
+- main.js：frame:false，新增 win-minimize/maximize/close 三个 IPC（close=hide 保持后台运行）
+- preload.js：暴露 winMinimize/winMaximize/winClose
+- index.html：加 .titlebar 自定义标题栏，三个 win-btn 按钮底色跟顶部同粉（#fdd9ec），hover 白色高亮，关闭键 hover 变红
+- main-window.js：绑定三个窗口控制按钮事件
+- 头部 padding 复原（无原生 band 了）

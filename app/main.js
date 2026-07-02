@@ -237,12 +237,22 @@ ipcMain.handle('undo-last', () => {
   return getFullState();
 });
 
+// 应用开机自启设置到系统
+function applyAutoLaunch(enabled) {
+  app.setLoginItemSettings({
+    openAtLogin: !!enabled,
+    args: [],
+  });
+}
+
 ipcMain.handle('update-settings', (_, obj) => {
   const prev = data.settings.intervalMinutes;
+  const prevAuto = data.settings.autoLaunch;
   data.settings = { ...data.settings, ...obj };
   if (obj.cupSizes) data.settings.cupSizes = obj.cupSizes.slice(0, 5);
   saveData();
   if (data.settings.intervalMinutes !== prev) startTimer();
+  if (data.settings.autoLaunch !== prevAuto) applyAutoLaunch(data.settings.autoLaunch);
   broadcastState();
   return getFullState();
 });
@@ -260,6 +270,15 @@ ipcMain.handle('open-main', () => {
   }
   return true;
 });
+
+// 自定义窗口控制（无边框窗口）
+ipcMain.handle('win-minimize', () => { if (mainWin) mainWin.minimize(); });
+ipcMain.handle('win-maximize', () => {
+  if (!mainWin) return;
+  if (mainWin.isMaximized()) mainWin.unmaximize();
+  else mainWin.maximize();
+});
+ipcMain.handle('win-close', () => { if (mainWin) mainWin.hide(); });
 
 // ── 创建窗口 ──────────────────────────────────────────────────────────────────
 function createFloatWin() {
@@ -288,8 +307,9 @@ function createMainWin() {
     minWidth: 380, minHeight: 560,
     show: true,
     autoHideMenuBar: true,
-    title: '喝水提醒猫',
-    backgroundColor: '#fef6fb',
+    title: ' ',
+    backgroundColor: '#fdeef7',
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -326,6 +346,7 @@ function createTray() {
 app.whenReady().then(() => {
   loadData();
   checkDate();
+  applyAutoLaunch(data.settings.autoLaunch);
   createMainWin();
   createFloatWin();
   createTray();

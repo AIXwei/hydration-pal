@@ -81,21 +81,21 @@
   <svg class="cat-cup" id="cupSvg" width="170" height="140" viewBox="200 40 1140 940" overflow="visible">
     <defs>
       <clipPath id="waterClip">
-        <path d="M 278,207 A 480,50 0 0 0 1237,207 L 1237,700 A 480,50 0 0 1 278,700 Z"/>
+        <rect x="278" y="0" width="959" height="1024"/>
       </clipPath>
       <clipPath id="catClip">
         <rect x="255" y="-120" width="1000" height="1000"/>
       </clipPath>
     </defs>
     <g clip-path="url(#waterClip)">
-      <image id="water" href="build/water_crop.png" x="278" y="700" width="959" height="60" preserveAspectRatio="none"/>
+      <image id="water" href="build/water_crop.png" x="278" y="700" width="959" height="60" preserveAspectRatio="none" style="filter:saturate(0.6) brightness(1.06)"/>
     </g>
     <g clip-path="url(#catClip)">
       <image id="cat-1" href="build/cat_1s.png" x="416" y="255" width="684" height="741"/>
       <image id="cat-2" href="build/cat_2s.png" x="416" y="255" width="684" height="741" style="display:none"/>
       <image id="cat-3" href="build/cat_3s.png" x="416" y="-197" width="684" height="741" style="display:none"/>
     </g>
-    <ellipse id="waterSurf" cx="758" cy="700" rx="0" ry="50" fill="rgba(180,230,255,0.55)" stroke="rgba(255,255,255,0.8)" stroke-width="3"/>
+    <ellipse id="waterFloor" cx="758" cy="700" rx="0" ry="35" fill="rgba(110,175,215,0.35)"/>
     <image href="build/cup.png" x="0" y="0" width="1536" height="1024"/>
   </svg>
 
@@ -116,12 +116,13 @@
     // 水位（素材坐标系 1536×1024）
     const POOL_BOT = 700, POOL_TOP = 207, WH = POOL_BOT - POOL_TOP;
     const wY = POOL_BOT - p * WH;
+    const waterH = Math.ceil((POOL_BOT - wY) * 745 / 665);
     document.getElementById('water').setAttribute('y', wY);
-    document.getElementById('water').setAttribute('height', Math.ceil(POOL_BOT - wY + 60));
-    document.getElementById('waterSurf').setAttribute('cy', wY);
-    document.getElementById('waterSurf').setAttribute('rx', p > 0.01 ? '480' : '0');
+    document.getElementById('water').setAttribute('height', waterH);
+    const waveSvgY = wY + Math.round(65 * waterH / 745);
+    document.getElementById('waterFloor').setAttribute('rx', p > 0.01 ? '480' : '0');
 
-    // 三阶段猫：圈中心卡水面线 wY（canvas y = wY - 445）
+    // 三阶段猫：圈中心跟踪 waveSvgY（PNG 内波浪面换算到 SVG 坐标）
     const c1 = document.getElementById('cat-1');
     const c2 = document.getElementById('cat-2');
     const c3 = document.getElementById('cat-3');
@@ -129,7 +130,7 @@
     c2.style.display = (p > 0 && p < 1) ? '' : 'none';
     c3.style.display = p >= 1 ? '' : 'none';
     if (p > 0 && p < 1) {
-      c2.setAttribute('y', Math.round(wY - 445));
+      c2.setAttribute('y', Math.round(waveSvgY - 445));
     }
 
     // 百分比

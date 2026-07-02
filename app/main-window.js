@@ -31,18 +31,21 @@ function render() {
   // 水位（素材坐标系 1536×1024）
   const POOL_BOT = 700, POOL_TOP = 207, WH = POOL_BOT - POOL_TOP;
   const wY = POOL_BOT - p * WH;
+  const waterH = Math.ceil((POOL_BOT - wY) * 745 / 665);
   $('water').setAttribute('y', wY);
-  $('water').setAttribute('height', Math.ceil(POOL_BOT - wY + 60));
-  $('waterSurf').setAttribute('cy', wY);
-  $('waterSurf').setAttribute('rx', p > 0.01 ? '480' : '0');
+  $('water').setAttribute('height', waterH);
+  // water_crop.png 顶部 ~40px 是气泡/透明区，实际波浪面在图像 y≈40
+  // 换算到 SVG 坐标后，猫圈跟踪该位置
+  const waveSvgY = wY + Math.round(65 * waterH / 745);
+  $('waterFloor').setAttribute('rx', p > 0.01 ? '480' : '0');
 
-  // 三阶段猫：圈中心固定在 wY（canvas y = wY - 445）
+  // 三阶段猫：圈中心固定在 waveSvgY
   const c1 = $('cat-1'), c2 = $('cat-2'), c3 = $('cat-3');
   c1.style.display = p <= 0 ? '' : 'none';
   c2.style.display = (p > 0 && p < 1) ? '' : 'none';
   c3.style.display = p >= 1 ? '' : 'none';
   if (p > 0 && p < 1) {
-    c2.setAttribute('y', Math.round(wY - 445));
+    c2.setAttribute('y', Math.round(waveSvgY - 445));
   }
 
   $('pctbig').textContent = Math.round(p * 100) + '%';
@@ -270,6 +273,11 @@ $('btn-50').onclick  = () => addWater(50);
 $('btn-100').onclick = () => addWater(100);
 $('btn-200').onclick = () => addWater(200);
 $('undo').onclick = () => wapi.undoLast().then(s => { if (s && s.today) { st = s; render(); } });
+
+// 窗口控制
+$('win-min').onclick = () => wapi.winMinimize();
+$('win-max').onclick = () => wapi.winMaximize();
+$('win-close').onclick = () => wapi.winClose();
 $('resumebtn').onclick = () => wapi.resume();
 
 wapi.onStateChanged(s => { st = s; render(); });

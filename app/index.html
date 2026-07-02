@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>喝水提醒猫</title>
+<title> </title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 :root {
@@ -31,49 +31,77 @@ html, body {
 .app { display:flex; flex-direction:column; height:100vh; }
 
 /* ── 顶栏 ── */
+/* ── 自定义标题栏（窗口控制） ── */
+.titlebar {
+  flex-shrink: 0;
+  height: 32px;
+  background: #fdd9ec;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 6px;
+  -webkit-app-region: drag;
+}
+.win-ctrl { display: flex; gap: 3px; -webkit-app-region: no-drag; }
+.win-btn {
+  width: 38px; height: 24px;
+  border: none; background: transparent;
+  color: #b84a7f; font-size: 13px; line-height: 1;
+  border-radius: 7px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s, transform .1s;
+}
+.win-btn:hover { background: rgba(255,255,255,0.7); }
+.win-btn:active { transform: scale(.9); }
+.win-close:hover { background: #ff6b8a; color: #fff; }
+
+/* ── 顶栏 ── */
 .header {
   flex-shrink: 0;
-  background: linear-gradient(135deg, #ffabd4 0%, #ff5fa0 100%);
-  padding: 12px 16px;
+  background: linear-gradient(180deg, #fdd9ec 0%, rgba(255,220,238,0.10) 100%);
+  padding: 8px 16px 6px;
   display: flex;
   align-items: center;
   gap: 10px;
-  box-shadow: 0 3px 18px rgba(255,95,160,0.35);
+  -webkit-app-region: drag;
 }
 /* iOS 分段控件风格 tab */
 .tab-group {
   display: flex;
-  background: rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.70);
   border-radius: 22px;
   padding: 3px;
   gap: 2px;
+  box-shadow: 0 2px 12px rgba(255,100,157,0.13);
+  -webkit-app-region: no-drag;
 }
 .tab {
   padding: 6px 18px;
   border-radius: 18px;
   font-size: 13px;
   font-weight: 700;
-  color: rgba(255,255,255,0.72);
+  color: var(--sub);
   cursor: pointer;
   transition: all .22s cubic-bezier(.34,1.56,.64,1);
   border: none;
   background: none;
 }
 .tab.on {
-  background: #fff;
-  color: var(--pk);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  background: var(--pk);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(255,95,160,0.32);
 }
-.header-right { margin-left: auto; display: flex; gap: 8px; }
+.header-right { margin-left: auto; display: flex; gap: 8px; -webkit-app-region: no-drag; }
 .icon-btn {
-  background: rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.70);
   border: none; border-radius: 12px;
   width: 34px; height: 34px;
   cursor: pointer; font-size: 16px;
   display: flex; align-items: center; justify-content: center;
-  color: #fff; transition: background .15s, transform .1s;
+  color: var(--pk); transition: background .15s, transform .1s;
+  box-shadow: 0 2px 10px rgba(255,100,157,0.13);
 }
-.icon-btn:hover { background: rgba(255,255,255,0.36); }
+.icon-btn:hover { background: rgba(255,255,255,0.95); }
 .icon-btn:active { transform: scale(.88); }
 
 /* ── 改目标弹层 ── */
@@ -129,8 +157,8 @@ html, body {
 .content {
   flex: 1; overflow-y: auto; padding: 14px 14px 20px;
 }
-.content::-webkit-scrollbar { width: 3px; }
-.content::-webkit-scrollbar-thumb { background: var(--pk2); border-radius: 4px; }
+.content::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+.content { scrollbar-width: none; }
 
 /* ── 杯子区 ── */
 .cup-section {
@@ -394,6 +422,15 @@ html, body {
 <body>
 <div class="app">
 
+  <!-- ── 自定义标题栏 ── -->
+  <div class="titlebar">
+    <div class="win-ctrl">
+      <button class="win-btn" id="win-min" title="最小化">─</button>
+      <button class="win-btn" id="win-max" title="最大化">▢</button>
+      <button class="win-btn win-close" id="win-close" title="关闭">✕</button>
+    </div>
+  </div>
+
   <!-- ── 顶栏 ── -->
   <div class="header">
     <div class="tab-group">
@@ -443,9 +480,9 @@ html, body {
       <!-- 坐标系=素材原始 1536×1024；水区 POOL_TOP=207 POOL_BOT=700 WH=493 -->
       <svg class="cat-cup" id="cupSvg" width="300" height="247" viewBox="200 40 1140 940" overflow="visible">
         <defs>
-          <!-- 圆柱形水体裁剪：顶=杯口椭圆弧，侧=内壁竖直，底=沙面椭圆弧 -->
+          <!-- 水体裁剪：限宽在杯内 x=278-1237，底部透视由 water_crop.png 椭圆透明区承担 -->
           <clipPath id="waterClip">
-            <path d="M 278,207 A 480,50 0 0 0 1237,207 L 1237,700 A 480,50 0 0 1 278,700 Z"/>
+            <rect x="278" y="0" width="959" height="1024"/>
           </clipPath>
           <!-- 猫：限制在杯子侧壁内，纵向宽松允许猫_3 伸出杯口 -->
           <clipPath id="catClip">
@@ -455,7 +492,7 @@ html, body {
 
         <!-- 水体（圆柱形裁剪，y 随水位动态调整） -->
         <g clip-path="url(#waterClip)">
-          <image id="water" href="build/water_crop.png" x="278" y="700" width="959" height="60" preserveAspectRatio="none"/>
+          <image id="water" href="build/water_crop.png" x="278" y="700" width="959" height="60" preserveAspectRatio="none" style="filter:saturate(0.6) brightness(1.06)"/>
         </g>
 
         <!-- 三猫（catClip 防止超出杯壁范围） -->
@@ -465,8 +502,8 @@ html, body {
           <image id="cat-3" href="build/cat_3s.png" x="416" y="-197" width="684" height="741" style="display:none"/>
         </g>
 
-        <!-- 水面椭圆盘（俯视透视效果） -->
-        <ellipse id="waterSurf" cx="758" cy="700" rx="0" ry="50" fill="rgba(180,230,255,0.55)" stroke="rgba(255,255,255,0.8)" stroke-width="3"/>
+        <!-- 水底透视椭圆（与底部弧同参数，模拟杯底入水感） -->
+        <ellipse id="waterFloor" cx="758" cy="700" rx="0" ry="35" fill="rgba(110,175,215,0.35)"/>
 
         <!-- 杯子覆层（最顶层：杯壁/沙/草盖在水和猫前） -->
         <image href="build/cup.png" x="0" y="0" width="1536" height="1024"/>
