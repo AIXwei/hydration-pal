@@ -8,12 +8,42 @@
     "dist": "electron-builder"
   },
   "devDependencies": {
-    "electron": "^31.0.0"
+    "electron": "^31.0.0",
+    "electron-builder": "^26.15.3"
   },
   "build": {
     "appId": "com.hydration-pal",
     "productName": "喝水小助手",
-    "directories": { "output": "dist" },
-    "win": { "icon": "app/build/icon.png" }
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "app/**/*",
+      "!app/data/**",
+      "!app/build/new/**",
+      "!app/build/preprocess.py",
+      "!app/build/杯子.png",
+      "!app/build/cat_1.png",
+      "!app/build/cat_2.png",
+      "!app/build/cat_3.png"
+    ],
+    "win": {
+      "icon": "app/build/icon.png",
+      "target": [
+        { "target": "portable", "arch": ["x64"] },
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "portable": {
+      "artifactName": "喝水小助手-${version}-免安装.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "喝水小助手",
+      "artifactName": "喝水小助手-${version}-安装版.exe"
+    }
   }
 }

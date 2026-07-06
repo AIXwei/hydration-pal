@@ -1,5 +1,17 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen } = require('electron');
 
+// 单实例锁：重复启动时退出新实例，把已有实例的主窗口带到前台
+if (!app.requestSingleInstanceLock()) {
+  app.exit(0);
+}
+app.on('second-instance', () => {
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.show();
+    if (mainWin.isMinimized()) mainWin.restore();
+    mainWin.focus();
+  }
+});
+
 // 禁用 GPU 硬件加速，避免在部分 Windows 环境下渲染失败
 app.disableHardwareAcceleration();
 const path = require('path');

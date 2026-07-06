@@ -232,3 +232,16 @@ cup.png / water_crop.png 仍在磁盘，直接还原。
 - index.html：加 .titlebar 自定义标题栏，三个 win-btn 按钮底色跟顶部同粉（#fdd9ec），hover 白色高亮，关闭键 hover 变红
 - main-window.js：绑定三个窗口控制按钮事件
 - 头部 padding 复原（无原生 band 了）
+
+## 2026-07-03 00:43
+打包 exe：
+- 安装 electron-builder，用 cat_1s 生成粉色圆角 app 图标 app/build/icon.png
+- package.json build 配置 portable + nsis 两个 target，files 排除 app/data
+- 产物在 dist/：免安装版 81.2MB、安装版 81.4MB
+- 注意 .gitignore 已排除 dist/，exe 不进 git
+
+## 2026-07-06 20:41
+修双实例bug + 补README：
+- bug根因：无单实例锁，断网当天双击两次跑起两个进程，各建一个悬浮窗
+- 修复：main.js 顶部加 requestSingleInstanceLock，拿不到锁直接 exit；second-instance 事件聚焦已有主窗口
+- 补 README.md（此前一直缺）：功能、文件结构、关键坐标、已知注意点
