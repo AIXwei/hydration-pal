@@ -24,6 +24,8 @@
 
   /* 主SVG */
   .cat-cup { display:block; -webkit-app-region:drag; }
+  #cat-1, #cat-2, #cat-3 { transition: opacity .35s ease; }
+  @media (prefers-reduced-motion: reduce) { #cat-1, #cat-2, #cat-3 { transition: none; } }
   .cat-cup.shake { animation:shake .5s ease; }
   @keyframes shake {
     0%,100%{transform:rotate(0)} 20%{transform:rotate(-5deg)} 40%{transform:rotate(5deg)}
@@ -92,8 +94,8 @@
     </g>
     <g clip-path="url(#catClip)">
       <image id="cat-1" href="build/cat_1s.png" x="416" y="255" width="684" height="741"/>
-      <image id="cat-2" href="build/cat_2s.png" x="416" y="255" width="684" height="741" style="display:none"/>
-      <image id="cat-3" href="build/cat_3s.png" x="416" y="-197" width="684" height="741" style="display:none"/>
+      <image id="cat-2" href="build/cat_2s.png" x="416" y="255" width="684" height="741" style="opacity:0"/>
+      <image id="cat-3" href="build/cat_3s.png" x="416" y="-197" width="684" height="741" style="opacity:0"/>
     </g>
     <ellipse id="waterFloor" cx="758" cy="700" rx="0" ry="35" fill="rgba(110,175,215,0.35)"/>
     <image href="build/cup.png" x="0" y="0" width="1536" height="1024"/>
@@ -107,31 +109,52 @@
   const wapi = window.api;
   let st = null;
 
+  // ── 水位动画驱动（与 main-window.js 同一套逻辑）──
+  const POOL_BOT = 700, POOL_TOP = 207, WH = POOL_BOT - POOL_TOP;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let curWY = POOL_BOT;
+  let targetWY = POOL_BOT;
+  let targetP = 0;
+
+  function animTick(now) {
+    curWY += (targetWY - curWY) * (reduceMotion ? 1 : 0.10);
+    if (Math.abs(targetWY - curWY) < 0.1) curWY = targetWY;
+
+    const hasWater = targetP > 0 && curWY < POOL_BOT - 0.5;
+    const bobW = (reduceMotion || !hasWater) ? 0 : Math.sin(now / 480) * 3;
+    const bobC = (reduceMotion || !hasWater) ? 0 : Math.sin(now / 480 + 0.9) * 4;
+
+    const y = curWY + bobW;
+    const waterH = Math.ceil(Math.max(0, POOL_BOT - y) * 745 / 665);
+    document.getElementById('water').setAttribute('y', y);
+    document.getElementById('water').setAttribute('height', waterH);
+    document.getElementById('waterFloor').setAttribute('rx', Math.round(480 * Math.min(1, Math.max(0, (POOL_BOT - curWY) / 15))));
+
+    const waveSvgY = y + 65 * waterH / 745;
+    if (targetP > 0 && targetP < 1) document.getElementById('cat-2').setAttribute('y', Math.round(waveSvgY - 445 + bobC));
+    if (targetP >= 1) document.getElementById('cat-3').setAttribute('y', Math.round(-197 + bobC));
+
+    requestAnimationFrame(animTick);
+  }
+  requestAnimationFrame(animTick);
+
   function render() {
     if (!st) return;
     const goal = st.settings.dailyGoal || 2000;
     const total = st.today.total || 0;
     const p = Math.max(0, Math.min(1, total / goal));
 
-    // 水位（素材坐标系 1536×1024）
-    const POOL_BOT = 700, POOL_TOP = 207, WH = POOL_BOT - POOL_TOP;
-    const wY = POOL_BOT - p * WH;
-    const waterH = Math.ceil((POOL_BOT - wY) * 745 / 665);
-    document.getElementById('water').setAttribute('y', wY);
-    document.getElementById('water').setAttribute('height', waterH);
-    const waveSvgY = wY + Math.round(65 * waterH / 745);
-    document.getElementById('waterFloor').setAttribute('rx', p > 0.01 ? '480' : '0');
+    // 更新动画目标，实际水位/猫位置由 animTick 逐帧逼近
+    targetP = p;
+    targetWY = POOL_BOT - p * WH;
 
-    // 三阶段猫：圈中心跟踪 waveSvgY（PNG 内波浪面换算到 SVG 坐标）
+    // 三阶段猫：opacity 淡入淡出
     const c1 = document.getElementById('cat-1');
     const c2 = document.getElementById('cat-2');
     const c3 = document.getElementById('cat-3');
-    c1.style.display = p <= 0 ? '' : 'none';
-    c2.style.display = (p > 0 && p < 1) ? '' : 'none';
-    c3.style.display = p >= 1 ? '' : 'none';
-    if (p > 0 && p < 1) {
-      c2.setAttribute('y', Math.round(waveSvgY - 445));
-    }
+    c1.style.opacity = p <= 0 ? '1' : '0';
+    c2.style.opacity = (p > 0 && p < 1) ? '1' : '0';
+    c3.style.opacity = p >= 1 ? '1' : '0';
 
     // 百分比
     document.getElementById('pill').textContent = Math.round(p * 100) + '%';

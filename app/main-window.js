@@ -13,31 +13,56 @@ function drinkName(type) {
   return d ? d.name : '水';
 }
 
+// ── 水位动画驱动 ──
+// SVG attribute 不吃 CSS transition，用 rAF 统一驱动：
+// 水位指数平滑补间 + 待机正弦漂浮 + 底部椭圆随水展开
+const POOL_BOT = 700, POOL_TOP = 207, WH = POOL_BOT - POOL_TOP;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let curWY = POOL_BOT;    // 当前显示水位（素材坐标），启动时从空杯涨到当前值
+let targetWY = POOL_BOT;
+let targetP = 0;
+
+function animTick(now) {
+  // 补间：每帧走剩余距离的一段，收敛快且无需管理动画状态
+  curWY += (targetWY - curWY) * (reduceMotion ? 1 : 0.10);
+  if (Math.abs(targetWY - curWY) < 0.1) curWY = targetWY;
+
+  const hasWater = targetP > 0 && curWY < POOL_BOT - 0.5;
+  // 待机漂浮：水面±3、猫相对水面再±4（相位差制造荡漾感），周期约3秒
+  const bobW = (reduceMotion || !hasWater) ? 0 : Math.sin(now / 480) * 3;
+  const bobC = (reduceMotion || !hasWater) ? 0 : Math.sin(now / 480 + 0.9) * 4;
+
+  const y = curWY + bobW;
+  const waterH = Math.ceil(Math.max(0, POOL_BOT - y) * 745 / 665);
+  $('water').setAttribute('y', y);
+  $('water').setAttribute('height', waterH);
+  // 底部透视椭圆随水位升起在头15个单位内展开，不再瞬间弹出
+  $('waterFloor').setAttribute('rx', Math.round(480 * Math.min(1, Math.max(0, (POOL_BOT - curWY) / 15))));
+
+  // water_crop.png 顶部约65px是气泡/透明区，实际波浪面在图像 y≈65
+  const waveSvgY = y + 65 * waterH / 745;
+  if (targetP > 0 && targetP < 1) $('cat-2').setAttribute('y', Math.round(waveSvgY - 445 + bobC));
+  if (targetP >= 1) $('cat-3').setAttribute('y', Math.round(-197 + bobC));
+
+  requestAnimationFrame(animTick);
+}
+requestAnimationFrame(animTick);
+
 function render() {
   if (!st) return;
   const goal = st.settings.dailyGoal || 2000;
   const total = st.today.total || 0;
   const p = Math.max(0, Math.min(1, total / goal));
 
-  // 水位（素材坐标系 1536×1024）
-  const POOL_BOT = 700, POOL_TOP = 207, WH = POOL_BOT - POOL_TOP;
-  const wY = POOL_BOT - p * WH;
-  const waterH = Math.ceil((POOL_BOT - wY) * 745 / 665);
-  $('water').setAttribute('y', wY);
-  $('water').setAttribute('height', waterH);
-  // water_crop.png 顶部约65px是气泡/透明区，实际波浪面在图像 y≈65
-  // 换算到 SVG 坐标后，猫圈跟踪该位置
-  const waveSvgY = wY + Math.round(65 * waterH / 745);
-  $('waterFloor').setAttribute('rx', p > 0.01 ? '480' : '0');
+  // 更新动画目标，实际水位/猫位置由 animTick 逐帧逼近
+  targetP = p;
+  targetWY = POOL_BOT - p * WH;
 
-  // 三阶段猫：圈中心固定在 waveSvgY
+  // 三阶段猫：opacity 淡入淡出（CSS transition），不再 display 硬切
   const c1 = $('cat-1'), c2 = $('cat-2'), c3 = $('cat-3');
-  c1.style.display = p <= 0 ? '' : 'none';
-  c2.style.display = (p > 0 && p < 1) ? '' : 'none';
-  c3.style.display = p >= 1 ? '' : 'none';
-  if (p > 0 && p < 1) {
-    c2.setAttribute('y', Math.round(waveSvgY - 445));
-  }
+  c1.style.opacity = p <= 0 ? '1' : '0';
+  c2.style.opacity = (p > 0 && p < 1) ? '1' : '0';
+  c3.style.opacity = p >= 1 ? '1' : '0';
 
   $('pctbig').textContent = Math.round(p * 100) + '%';
   $('curml').textContent = total;
