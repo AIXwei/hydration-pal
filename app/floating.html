@@ -80,7 +80,8 @@
   <span class="spark">✨</span><span class="spark">🌟</span>
 
   <!-- 杯子 v6：圆柱裁剪合成 cup.png + water_crop -->
-  <svg class="cat-cup" id="cupSvg" width="170" height="140" viewBox="200 40 1140 940" overflow="visible">
+  <!-- viewBox 上扩到 -120（catClip 上限），达标猫头部/爱心包进 SVG 盒内，不被窗口边界裁掉 -->
+  <svg class="cat-cup" id="cupSvg" width="170" height="164" viewBox="200 -120 1140 1100" overflow="visible">
     <defs>
       <clipPath id="waterClip">
         <rect x="278" y="0" width="959" height="1024"/>
