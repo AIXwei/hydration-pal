@@ -283,3 +283,6 @@ cup.png / water_crop.png 仍在磁盘，直接还原。
 
 ## 2026-07-06 23:37
 修悬浮窗达标猫头部被裁：viewBox 顶原为 y=40，cat_3 头部在负坐标区靠 overflow:visible 溢出渲染，被 260px 高的悬浮窗边界截断（主窗口留白足没暴露）。viewBox 上扩到 -120（与 catClip 上限一致），svg 高度 140→164 等比放大，头部包进盒内。窗口高度预算 4+164+pill+qbar≈227<260 不溢出。
+
+## 2026-07-06 23:39
+删 waterFloor 底部透视椭圆（index.html/floating.html/main-window.js 三处）：早期为补底部透视加的半透明蓝椭圆，换成自带椭圆底的水体素材后成了多余叠加，满水时在沙面上方压出一条深蓝色带。底部透视完全由 water_crop.png 承担。

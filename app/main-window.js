@@ -36,8 +36,6 @@ function animTick(now) {
   const waterH = Math.ceil(Math.max(0, POOL_BOT - y) * 745 / 665);
   $('water').setAttribute('y', y);
   $('water').setAttribute('height', waterH);
-  // 底部透视椭圆随水位升起在头15个单位内展开，不再瞬间弹出
-  $('waterFloor').setAttribute('rx', Math.round(480 * Math.min(1, Math.max(0, (POOL_BOT - curWY) / 15))));
 
   // water_crop.png 顶部约65px是气泡/透明区，实际波浪面在图像 y≈65
   const waveSvgY = y + 65 * waterH / 745;
