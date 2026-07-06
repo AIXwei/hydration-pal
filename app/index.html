@@ -224,32 +224,6 @@ html, body {
 .wbtn .num { color: #c94f7a; text-shadow: none; position: relative; z-index: 1; font-size: 26px; font-weight: 900; line-height: 1; }
 .wbtn .unit { color: rgba(201, 79, 122, 0.72); position: relative; z-index: 1; font-size: 11px; font-weight: 700; letter-spacing: .8px; }
 
-/* ── 猫咪成长卡 ── */
-.cat-growth {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 20px;
-  padding: 12px 16px;
-  margin-bottom: 13px;
-  display: flex; align-items: center; gap: 10px;
-  box-shadow: var(--card-shadow);
-}
-.lv-chip {
-  background: linear-gradient(135deg, #ff5fa0, #c084fc);
-  color: #fff; font-size: 11px; font-weight: 800;
-  padding: 3px 10px; border-radius: 20px;
-  white-space: nowrap; letter-spacing: .3px;
-}
-.grow-info { flex: 1; }
-.grow-name { font-size: 13px; font-weight: 700; color: var(--text); }
-.grow-bar-wrap { background: #f0e8f8; border-radius: 6px; height: 5px; margin-top: 4px; }
-.grow-bar {
-  background: linear-gradient(90deg, #ff5fa0, #c084fc);
-  height: 100%; border-radius: 6px;
-  transition: width .55s cubic-bezier(.34,1.56,.64,1);
-}
-.grow-next { font-size: 10px; color: var(--muted); margin-top: 2px; }
-
 /* ── 今日记录 ── */
 .section-label {
   font-size: 11px; font-weight: 800;
@@ -309,27 +283,6 @@ html, body {
   background-clip: text;
 }
 .streak-sub { font-size: 11px; color: var(--sub); margin-top: 4px; }
-
-/* ── 勋章墙 ── */
-.badge-wrap {
-  background: var(--card-bg); border: 1px solid var(--card-border);
-  border-radius: 20px; padding: 12px 16px; margin-bottom: 10px;
-  box-shadow: var(--card-shadow);
-}
-.badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.badge-item {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 8px 2px; border-radius: 14px;
-  filter: grayscale(1); opacity: 0.42;
-  transition: filter .2s, opacity .2s, transform .15s;
-}
-.badge-item.unlocked {
-  filter: none; opacity: 1;
-  background: linear-gradient(135deg, rgba(255,182,213,0.20), rgba(233,213,255,0.20));
-}
-.badge-item.unlocked:hover { transform: translateY(-2px); }
-.badge-icon { font-size: 22px; line-height: 1; }
-.badge-name { font-size: 9px; font-weight: 700; color: var(--sub); white-space: nowrap; }
 
 .chart-wrap {
   background: var(--card-bg); border: 1px solid var(--card-border);
@@ -584,20 +537,6 @@ html, body {
         <div class="streak-num" id="best-num">0</div>
         <div class="streak-sub">🏆 最佳连续</div>
       </div>
-    </div>
-
-    <div class="cat-growth">
-      <span class="lv-chip" id="lv-chip">Lv.1</span>
-      <div class="grow-info">
-        <div class="grow-name" id="grow-name">奶猫</div>
-        <div class="grow-bar-wrap"><div class="grow-bar" id="grow-bar" style="width:0%"></div></div>
-        <div class="grow-next" id="grow-next"></div>
-      </div>
-    </div>
-
-    <div class="badge-wrap">
-      <div class="section-label">勋章</div>
-      <div class="badge-grid" id="badge-grid"></div>
     </div>
 
     <div class="chart-wrap">

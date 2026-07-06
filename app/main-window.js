@@ -177,37 +177,6 @@ function renderStats() {
   // 连续达标
   $('streak-num').textContent = st.stats.streak || 0;
   $('best-num').textContent = st.stats.bestStreak || 0;
-
-  // 猫咪等级成长
-  const cat = st._cat;
-  if (cat) {
-    $('lv-chip').textContent = 'Lv.' + cat.level;
-    $('grow-name').textContent = cat.name;
-    $('grow-bar').style.width = Math.round(Math.min(1, cat.progress) * 100) + '%';
-    if (cat.nextName) {
-      const next = (meta.levels || []).find(l => l.level === cat.level + 1);
-      const remain = next ? Math.max(0, next.xp - (st.stats.totalAchieved || 0)) : 0;
-      $('grow-next').textContent = `再达标 ${remain} 天升级为「${cat.nextName}」`;
-    } else {
-      $('grow-next').textContent = '已达最高等级，猫猫大师 👑';
-    }
-  }
-
-  // 勋章墙
-  const unlocked = new Set(st.stats.badges || []);
-  const grid = $('badge-grid');
-  grid.innerHTML = '';
-  (meta.badges || []).forEach(b => {
-    const el = document.createElement('div');
-    el.className = 'badge-item' + (unlocked.has(b.id) ? ' unlocked' : '');
-    const ic = document.createElement('div');
-    ic.className = 'badge-icon'; ic.textContent = b.icon;
-    const nm = document.createElement('div');
-    nm.className = 'badge-name'; nm.textContent = b.name;
-    el.appendChild(ic); el.appendChild(nm);
-    el.title = b.desc + (unlocked.has(b.id) ? '（已解锁）' : '（未解锁）');
-    grid.appendChild(el);
-  });
 }
 
 // Tab
