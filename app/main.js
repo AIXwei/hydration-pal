@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, Notification } = require('electron');
 
 // 单实例锁：重复启动时退出新实例，把已有实例的主窗口带到前台
 if (!app.requestSingleInstanceLock()) {
@@ -52,9 +52,15 @@ let reminderTimer = null;
 let mainWin = null;
 let floatWin = null;
 let tray = null;
+let quitting = false;
+app.on('before-quit', () => { quitting = true; });
 
 // ── 数据 I/O ──────────────────────────────────────────────────────────────────
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+// 本地时区日期（不能用 toISOString：UTC+8 下 0-8 点会返回昨天）
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
 function fmtTime(d) {
   return d.toTimeString().slice(0, 5);
 }
@@ -90,33 +96,52 @@ function loadData() {
       if (!data.today) data.today = def.today;
       if (!data.history) data.history = [];
       if (!data.stats) data.stats = def.stats;
+      // records 类型清洗：防手工编辑/损坏文件把非法值带进渲染层
+      data.today.records = (Array.isArray(data.today.records) ? data.today.records : []).map(r => ({
+        id: r.id,
+        ml: Math.max(0, Number(r.ml) || 0),
+        type: typeof r.type === 'string' ? r.type : 'water',
+        time: typeof r.time === 'string' ? r.time.slice(0, 5) : '',
+      }));
     } else {
       data = defaultData();
     }
-  } catch { data = defaultData(); }
-}
-
-function saveData() {
-  try { fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8'); } catch {}
-}
-
-// ── 日期翻转 ──────────────────────────────────────────────────────────────────
-function checkDate() {
-  const today = todayStr();
-  if (data.today.date !== today) {
-    // 归档昨天
-    const prev = data.today;
-    if (prev.records.length > 0 || prev.total > 0) {
-      data.history.push({ date: prev.date, total: prev.total, goal: data.settings.dailyGoal });
-      if (data.history.length > 365) data.history.shift();
-    }
-    updateStreakOnRollover(prev);
-    data.today = { date: today, total: 0, records: [] };
-    saveData();
+  } catch (e) {
+    console.error('loadData failed, backing up corrupt file:', e);
+    try {
+      if (fs.existsSync(DATA_FILE)) fs.copyFileSync(DATA_FILE, DATA_FILE + '.corrupt-' + Date.now());
+    } catch (e2) { console.error('backup corrupt file failed:', e2); }
+    data = defaultData();
   }
 }
 
-function updateStreakOnRollover(prev) {
+// 原子写：先写临时文件再 rename，避免写一半崩溃留下半截 JSON
+function saveData() {
+  try {
+    const tmp = DATA_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+    fs.renameSync(tmp, DATA_FILE);
+  } catch (e) { console.error('saveData failed:', e); }
+}
+
+// ── 日期翻转 ──────────────────────────────────────────────────────────────────
+// 返回是否发生了翻转，调用方据此决定要不要广播
+function checkDate() {
+  const today = todayStr();
+  if (data.today.date === today) return false;
+  // 归档昨天
+  const prev = data.today;
+  if (prev.records.length > 0 || prev.total > 0) {
+    data.history.push({ date: prev.date, total: prev.total, goal: data.settings.dailyGoal });
+    if (data.history.length > 365) data.history.shift();
+  }
+  updateStreakOnRollover(prev, today);
+  data.today = { date: today, total: 0, records: [] };
+  saveData();
+  return true;
+}
+
+function updateStreakOnRollover(prev, today) {
   const reached = prev.total >= data.settings.dailyGoal;
   if (reached) {
     data.stats.streak = (data.stats.streak || 0) + 1;
@@ -129,6 +154,9 @@ function updateStreakOnRollover(prev) {
   } else {
     data.stats.streak = 0;
   }
+  // 归档日和今天间隔超过1天=中间有整天没喝水，连续中断
+  const gapDays = Math.round((new Date(today) - new Date(prev.date)) / 86400000);
+  if (gapDays > 1) data.stats.streak = 0;
 }
 
 // ── 猫咪成长 ──────────────────────────────────────────────────────────────────
@@ -198,6 +226,7 @@ function startTimer() {
   if (reminderTimer) clearInterval(reminderTimer);
   const ms = Math.max(10, data.settings.intervalMinutes || 60) * 60 * 1000;
   reminderTimer = setInterval(() => {
+    if (checkDate()) broadcastState(); // 跨日自动翻转，不等用户操作
     if (snoozeUntil && Date.now() < snoozeUntil) return;
     const now = new Date();
     const mins = now.getHours() * 60 + now.getMinutes();
@@ -210,16 +239,25 @@ function startTimer() {
       ? `${nick}，该喝水啦 💧\n还差 ${left}ml 达标`
       : `${nick}，今天已经达标啦 🎉`;
     broadcast('reminder', { type: 'reminder', text });
+    if (data.settings.enableToast && Notification.isSupported()) {
+      new Notification({ title: '喝水小助手 💧', body: text.replace('\n', '，') }).show();
+    }
   }, ms);
 }
+
+// 跨日翻转不依赖提醒间隔：每分钟轻量检查一次（提醒间隔可长达4小时）
+setInterval(() => { if (data && checkDate()) broadcastState(); }, 60000);
 
 // ── IPC 处理器 ────────────────────────────────────────────────────────────────
 ipcMain.handle('get-state', () => getFullState());
 
+let recSeq = 0; // 同毫秒连点时保证 id 不撞
 ipcMain.handle('add-water', (_, ml, type) => {
   checkDate();
-  ml = Math.max(1, Math.min(9999, parseInt(ml) || 0));
-  const record = { id: Date.now(), ml, type: type || 'water', time: fmtTime(new Date()) };
+  ml = parseInt(ml, 10);
+  if (!Number.isFinite(ml) || ml <= 0) return getFullState(); // 非法值不落记录
+  ml = Math.min(9999, ml);
+  const record = { id: Date.now() + '-' + (recSeq++), ml, type: typeof type === 'string' ? type : 'water', time: fmtTime(new Date()) };
   data.today.total += ml;
   data.today.records.push(record);
   checkAchievements();
@@ -229,6 +267,7 @@ ipcMain.handle('add-water', (_, ml, type) => {
 });
 
 ipcMain.handle('delete-record', (_, id) => {
+  checkDate();
   const idx = data.today.records.findIndex(r => r.id === id);
   if (idx >= 0) {
     data.today.total = Math.max(0, data.today.total - data.today.records[idx].ml);
@@ -240,6 +279,7 @@ ipcMain.handle('delete-record', (_, id) => {
 });
 
 ipcMain.handle('undo-last', () => {
+  checkDate();
   if (data.today.records.length > 0) {
     const last = data.today.records.pop();
     data.today.total = Math.max(0, data.today.total - last.ml);
@@ -257,14 +297,31 @@ function applyAutoLaunch(enabled) {
   });
 }
 
+// 设置白名单校验：渲染端的 clamp 只当 UX，主进程是最后防线
+function cleanNum(v, min, max, dft) { v = parseInt(v, 10); return Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : dft; }
+function cleanTime(v, dft) { return typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : dft; }
 ipcMain.handle('update-settings', (_, obj) => {
-  const prev = data.settings.intervalMinutes;
-  const prevAuto = data.settings.autoLaunch;
-  data.settings = { ...data.settings, ...obj };
-  if (obj.cupSizes) data.settings.cupSizes = obj.cupSizes.slice(0, 5);
+  if (!obj || typeof obj !== 'object') return getFullState();
+  const s = data.settings;
+  const pick = (k) => obj[k] !== undefined ? obj[k] : s[k];
+  const next = {
+    dailyGoal: cleanNum(pick('dailyGoal'), 500, 6000, 2000),
+    intervalMinutes: cleanNum(pick('intervalMinutes'), 10, 240, 60),
+    activeStart: cleanTime(pick('activeStart'), '08:00'),
+    activeEnd: cleanTime(pick('activeEnd'), '22:00'),
+    cupSizes: (Array.isArray(pick('cupSizes')) ? pick('cupSizes') : [100, 200, 300, 500]).map(x => cleanNum(x, 1, 9999, 100)).slice(0, 5),
+    nickname: String(pick('nickname') || '老婆sama').slice(0, 20),
+    edgeSnap: !!pick('edgeSnap'),
+    enableToast: !!pick('enableToast'),
+    enableSound: !!pick('enableSound'),
+    autoLaunch: !!pick('autoLaunch'),
+  };
+  const prevInterval = s.intervalMinutes;
+  const prevAuto = s.autoLaunch;
+  data.settings = next;
   saveData();
-  if (data.settings.intervalMinutes !== prev) startTimer();
-  if (data.settings.autoLaunch !== prevAuto) applyAutoLaunch(data.settings.autoLaunch);
+  if (next.intervalMinutes !== prevInterval) startTimer();
+  if (next.autoLaunch !== prevAuto) applyAutoLaunch(next.autoLaunch);
   broadcastState();
   return getFullState();
 });
@@ -307,10 +364,24 @@ function createFloatWin() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
     },
   });
   floatWin.loadFile(path.join(__dirname, 'floating.html'));
   floatWin.setIgnoreMouseEvents(false);
+
+  // 吸边：拖动结束后靠近屏幕左右边缘（40px内）自动贴边
+  floatWin.on('moved', () => {
+    if (!data || !data.settings.edgeSnap) return;
+    const wa = screen.getPrimaryDisplay().workArea;
+    const b = floatWin.getBounds();
+    let x = b.x;
+    if (b.x - wa.x < 40) x = wa.x;
+    else if (wa.x + wa.width - (b.x + b.width) < 40) x = wa.x + wa.width - b.width;
+    const y = Math.max(wa.y, Math.min(wa.y + wa.height - b.height, b.y));
+    if (x !== b.x || y !== b.y) floatWin.setBounds({ ...b, x, y });
+  });
 }
 
 function createMainWin() {
@@ -325,10 +396,15 @@ function createMainWin() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
     },
   });
   mainWin.loadFile(path.join(__dirname, 'index.html'));
-  mainWin.on('close', (e) => { e.preventDefault(); mainWin.hide(); });
+  // 平时关窗=隐藏后台；系统关机/注销（before-quit）时放行，避免被判无响应
+  mainWin.on('close', (e) => {
+    if (!quitting) { e.preventDefault(); mainWin.hide(); }
+  });
 }
 
 function createTray() {

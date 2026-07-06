@@ -245,3 +245,24 @@ cup.png / water_crop.png 仍在磁盘，直接还原。
 - bug根因：无单实例锁，断网当天双击两次跑起两个进程，各建一个悬浮窗
 - 修复：main.js 顶部加 requestSingleInstanceLock，拿不到锁直接 exit；second-instance 事件聚焦已有主窗口
 - 补 README.md（此前一直缺）：功能、文件结构、关键坐标、已知注意点
+
+## 2026-07-06 21:03
+项目清理落地：
+- 删 make-icons.js（死代码，已被Python图标流程替代）
+- app/build/new/ 六层素材移出git（.gitignore）和安装包（package.json files排除），本地保留
+- 打包排除未引用原始大素材（cat_1/2/3.png、杯子.png、preprocess.py），瘦身近10MB
+- 提交 e52a487 已推送，重新打包带单实例锁的新exe
+
+## 2026-07-06 21:47
+按审查报告修复全部17项中的15项：
+- ❌时区bug：todayStr 改本地日期（原 toISOString 在 UTC+8 的 0-8 点返回昨天）
+- 跨日翻转：checkDate 返回是否翻转；提醒 tick + 每分钟轻量 timer 都检查并广播
+- streak 断签清零：归档日与今天差>1天时 streak 归零
+- saveData 原子写（tmp+rename）；loadData 失败备份 .corrupt-<ts>；records 类型清洗
+- 成就页补 UI：连续/最佳达标卡、猫咪等级成长条、7 勋章墙（灰=未解锁）
+- 三个死开关全部实现：桌面通知（Electron Notification）、提示音（WebAudio 双音符）、悬浮窗吸边（moved 事件贴边）
+- update-settings 白名单校验；add-water 非法值不落记录；record.id 加序列号防连点撞车
+- delete-record/undo-last 补 checkDate；webPreferences 显式 sandbox+nodeIntegration:false
+- close 在 before-quit 后放行（关机不再被判无响应）；删 genTicks_unused 和 tick CSS 死代码
+- PNG 无损压缩省约7%
+未做2项：增量渲染重构（当前数据量无感，改动风险大于收益）、色彩变量收敛（30+处纯外观重构，视觉回归风险）

@@ -4,15 +4,6 @@ const $ = (id) => document.getElementById(id);
 const SVGNS = 'http://www.w3.org/2000/svg';
 let st = null;
 let meta = { badges: [], drinks: [{ id: 'water', name: '水', emoji: '💧', factor: 1 }], levels: [] };
-function genTicks_unused(goal) {
-  const steps = [100, 200, 250, 500, 1000, 2000];
-  let step = 500;
-  for (const s of steps) { if (goal / s <= 5) { step = s; break; } }
-  const a = [];
-  for (let v = step; v < goal - 1; v += step) a.push(v);
-  a.push(goal);
-  return a;
-}
 function drinkEmoji(type) {
   const d = meta.drinks.find(x => x.id === type);
   return d ? d.emoji : '💧';
@@ -34,7 +25,7 @@ function render() {
   const waterH = Math.ceil((POOL_BOT - wY) * 745 / 665);
   $('water').setAttribute('y', wY);
   $('water').setAttribute('height', waterH);
-  // water_crop.png 顶部 ~40px 是气泡/透明区，实际波浪面在图像 y≈40
+  // water_crop.png 顶部约65px是气泡/透明区，实际波浪面在图像 y≈65
   // 换算到 SVG 坐标后，猫圈跟踪该位置
   const waveSvgY = wY + Math.round(65 * waterH / 745);
   $('waterFloor').setAttribute('rx', p > 0.01 ? '480' : '0');
@@ -182,6 +173,41 @@ function renderStats() {
     el.title = dateStr;
     calGrid.appendChild(el);
   }
+
+  // 连续达标
+  $('streak-num').textContent = st.stats.streak || 0;
+  $('best-num').textContent = st.stats.bestStreak || 0;
+
+  // 猫咪等级成长
+  const cat = st._cat;
+  if (cat) {
+    $('lv-chip').textContent = 'Lv.' + cat.level;
+    $('grow-name').textContent = cat.name;
+    $('grow-bar').style.width = Math.round(Math.min(1, cat.progress) * 100) + '%';
+    if (cat.nextName) {
+      const next = (meta.levels || []).find(l => l.level === cat.level + 1);
+      const remain = next ? Math.max(0, next.xp - (st.stats.totalAchieved || 0)) : 0;
+      $('grow-next').textContent = `再达标 ${remain} 天升级为「${cat.nextName}」`;
+    } else {
+      $('grow-next').textContent = '已达最高等级，猫猫大师 👑';
+    }
+  }
+
+  // 勋章墙
+  const unlocked = new Set(st.stats.badges || []);
+  const grid = $('badge-grid');
+  grid.innerHTML = '';
+  (meta.badges || []).forEach(b => {
+    const el = document.createElement('div');
+    el.className = 'badge-item' + (unlocked.has(b.id) ? ' unlocked' : '');
+    const ic = document.createElement('div');
+    ic.className = 'badge-icon'; ic.textContent = b.icon;
+    const nm = document.createElement('div');
+    nm.className = 'badge-name'; nm.textContent = b.name;
+    el.appendChild(ic); el.appendChild(nm);
+    el.title = b.desc + (unlocked.has(b.id) ? '（已解锁）' : '（未解锁）');
+    grid.appendChild(el);
+  });
 }
 
 // Tab
@@ -280,10 +306,27 @@ $('win-max').onclick = () => wapi.winMaximize();
 $('win-close').onclick = () => wapi.winClose();
 $('resumebtn').onclick = () => wapi.resume();
 
-wapi.onStateChanged(s => { st = s; render(); });
+// 提示音：WebAudio 双音符水滴声，不依赖音频文件
+function playChime() {
+  try {
+    const ctx = playChime._ctx || (playChime._ctx = new AudioContext());
+    [[880, 0], [1320, 0.12]].forEach(([freq, delay]) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.001, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + delay + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.3);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + 0.35);
+    });
+  } catch (e) { /* 音频设备不可用时静默 */ }
+}
+
+wapi.onStateChanged(s => { st = s; if (s._meta) meta = s._meta; render(); });
 wapi.onReminder(d => {
   if (d.type === 'celebrate') showToast('🎉 ' + d.text);
   else if (d.type === 'levelup') showToast('⬆️ ' + d.text);
   else if (d.type === 'badge') showToast('🏅 ' + d.text);
+  if (st && st.settings.enableSound && (d.type === 'reminder' || d.type === 'celebrate')) playChime();
 });
 wapi.getState().then(s => { st = s; if (s._meta) meta = s._meta; render(); });

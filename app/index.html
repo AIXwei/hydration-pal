@@ -174,10 +174,6 @@ html, body {
 /* 杯子 SVG 眼睛 */
 .eye-n { display: block; }
 .eye-h { display: none; }
-.tick-line { stroke: #d8d0ec; stroke-width: 1.2; }
-.tick-line.reached { stroke: #5bb8ef; stroke-width: 1.5; }
-.tick-text { font-size: 8px; font-weight: 700; fill: #c4b8d8; font-family:"Microsoft YaHei",sans-serif; }
-.tick-text.reached { fill: #2c97c4; }
 
 /* 百分比 — 渐变文字 */
 .pct-big {
@@ -298,6 +294,42 @@ html, body {
   background-clip: text;
 }
 .month-sub { font-size: 13px; color: var(--sub); margin-top: 4px; }
+
+/* ── 连续达标 ── */
+.streak-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.streak-card {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 20px; padding: 14px 12px; text-align: center;
+  box-shadow: var(--card-shadow);
+}
+.streak-num {
+  font-size: 26px; font-weight: 900; line-height: 1;
+  background: linear-gradient(135deg, var(--pk), var(--lv));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.streak-sub { font-size: 11px; color: var(--sub); margin-top: 4px; }
+
+/* ── 勋章墙 ── */
+.badge-wrap {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 20px; padding: 12px 16px; margin-bottom: 10px;
+  box-shadow: var(--card-shadow);
+}
+.badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.badge-item {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 8px 2px; border-radius: 14px;
+  filter: grayscale(1); opacity: 0.42;
+  transition: filter .2s, opacity .2s, transform .15s;
+}
+.badge-item.unlocked {
+  filter: none; opacity: 1;
+  background: linear-gradient(135deg, rgba(255,182,213,0.20), rgba(233,213,255,0.20));
+}
+.badge-item.unlocked:hover { transform: translateY(-2px); }
+.badge-icon { font-size: 22px; line-height: 1; }
+.badge-name { font-size: 9px; font-weight: 700; color: var(--sub); white-space: nowrap; }
 
 .chart-wrap {
   background: var(--card-bg); border: 1px solid var(--card-border);
@@ -541,6 +573,31 @@ html, body {
     <div class="month-card">
       <div class="month-num" id="month-num">0</div>
       <div class="month-sub">🐾 本月达标天数</div>
+    </div>
+
+    <div class="streak-row">
+      <div class="streak-card">
+        <div class="streak-num" id="streak-num">0</div>
+        <div class="streak-sub">🔥 当前连续达标</div>
+      </div>
+      <div class="streak-card">
+        <div class="streak-num" id="best-num">0</div>
+        <div class="streak-sub">🏆 最佳连续</div>
+      </div>
+    </div>
+
+    <div class="cat-growth">
+      <span class="lv-chip" id="lv-chip">Lv.1</span>
+      <div class="grow-info">
+        <div class="grow-name" id="grow-name">奶猫</div>
+        <div class="grow-bar-wrap"><div class="grow-bar" id="grow-bar" style="width:0%"></div></div>
+        <div class="grow-next" id="grow-next"></div>
+      </div>
+    </div>
+
+    <div class="badge-wrap">
+      <div class="section-label">勋章</div>
+      <div class="badge-grid" id="badge-grid"></div>
     </div>
 
     <div class="chart-wrap">
