@@ -286,3 +286,9 @@ cup.png / water_crop.png 仍在磁盘，直接还原。
 
 ## 2026-07-06 23:39
 删 waterFloor 底部透视椭圆（index.html/floating.html/main-window.js 三处）：早期为补底部透视加的半透明蓝椭圆，换成自带椭圆底的水体素材后成了多余叠加，满水时在沙面上方压出一条深蓝色带。底部透视完全由 water_crop.png 承担。
+
+## 2026-07-07 08:27
+修猫咪图层被沙面盖住：上次修沙面透底（b5dfff4）把 cup.png 沙面中部填成不透明，而 cup.png 是最顶层，趴底猫身体被沙盖得只剩头。正确结构是保留透明区当"窗口"：
+- cup.png 回退到有洞版本（git checkout 91bb345）
+- SVG 最底层加沙色垫片 ellipse(cx758 cy728 rx470 ry55 #f4edda)，无猫时洞透出沙色，有水时半透明水叠在垫片上呈水下沙色，猫画在垫片前、底边被 cup.png 沙缘遮挡形成趴底效果
+- index.html + floating.html 同步

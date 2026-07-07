@@ -480,6 +480,10 @@ html, body {
           </clipPath>
         </defs>
 
+        <!-- 沙色垫片（最底层）：cup.png 沙面中部是抠白留下的透明区，
+             垫片透过它显示沙色；猫画在垫片前、被 cup.png 沙缘盖住底边形成趴底遮挡 -->
+        <ellipse cx="758" cy="728" rx="470" ry="55" fill="#f4edda"/>
+
         <!-- 水体（圆柱形裁剪，y 随水位动态调整） -->
         <g clip-path="url(#waterClip)">
           <image id="water" href="build/water_crop.png" x="278" y="700" width="959" height="60" preserveAspectRatio="none" style="filter:saturate(0.6) brightness(1.06)"/>
