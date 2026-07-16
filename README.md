@@ -58,8 +58,39 @@ app/
 - electron-builder ^26（打包）
 - Python + Pillow（仅素材预处理时需要）
 
+## 安卓版（mobile/）
+
+Capacitor 封装的安卓 App，主界面复用桌面版杯子 SVG 和渲染逻辑：
+
+```
+mobile/
+  www/
+    index.html   移动版主界面（桌面版去掉标题栏+viewport+安全区适配）
+    app.js       渲染逻辑（同 main-window.js，去掉窗口控制）
+    store.js     数据层：localStorage 实现 window.api 同款接口，业务逻辑复刻主进程
+    build/       素材（cup/water_crop/三猫/icon）
+  android/       Capacitor 生成的 gradle 工程（build.gradle 已换华为 maven 镜像）
+  capacitor.config.json
+```
+
+构建：
+
+```bash
+cd mobile
+npx cap sync android
+cd android
+JAVA_HOME=C:/MK/_shared/android-toolchain/jdk-21.0.2 ANDROID_HOME=C:/MK/_shared/android-toolchain/sdk ./gradlew assembleDebug
+# 产物 android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+- 工具链在 `C:\MK\_shared\android-toolchain\`（JDK21 + SDK platform-36/build-tools-36，全部来自国内镜像，本机网络访问不到 google/adoptium 源）
+- 提醒用 @capacitor/local-notifications 排未来48小时通知，设置变更/回前台时重排
+- 双端数据独立：桌面 data.json，安卓 localStorage，互不同步
+- debug 签名 APK 可直接安装；手机会提示「未知来源」，允许即可
+
 ## 已知注意点
 
 - exe 无代码签名，首次运行会被 SmartScreen 拦，点「更多信息→仍要运行」
 - 开机自启只对打包后的 exe 有效，开发模式写入的启动项指向 electron.exe
 - 单实例锁已加（main.js 顶部）：重复启动会聚焦已有实例，不会出现双悬浮窗
+- 修改水杯渲染逻辑时，第四处同步点是 mobile/www/（index.html/app.js 复制自桌面版）

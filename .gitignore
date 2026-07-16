@@ -5,3 +5,7 @@ dist/
 Thumbs.db
 app/data/
 app/build/new/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/local.properties

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>喝水小助手</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --pk: #ff5fa0; --pk2: #ffafd0; --pk3: #ffe0f0;
+  --lv: #c084fc; --lv2: #e9d5ff;
+  --text: #3a3250; --sub: #9080aa; --muted: #c4b8d8;
+  --card-bg: rgba(255,255,255,0.72);
+  --card-border: rgba(255,182,213,0.28);
+  --card-shadow: 0 4px 20px rgba(255,100,157,0.10);
+}
+
+html, body {
+  height: 100%;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--text);
+  overflow: hidden;
+  user-select: none;
+  background: #fdf0f8;
+  background-image:
+    radial-gradient(ellipse at 15% 10%, rgba(255,182,213,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 90%, rgba(192,132,252,0.16) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 10%, rgba(167,243,208,0.12) 0%, transparent 45%);
+}
+
+/* ── 整体框架 ── */
+.app { display:flex; flex-direction:column; height:100vh; }
+
+/* ── 顶栏 ── */
+.header {
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #fdd9ec 0%, rgba(255,220,238,0.10) 100%);
+  /* env(safe-area-inset-top)：避开安卓状态栏/刘海 */
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  -webkit-app-region: drag;
+}
+/* iOS 分段控件风格 tab */
+.tab-group {
+  display: flex;
+  background: rgba(255,255,255,0.70);
+  border-radius: 22px;
+  padding: 3px;
+  gap: 2px;
+  box-shadow: 0 2px 12px rgba(255,100,157,0.13);
+  -webkit-app-region: no-drag;
+}
+.tab {
+  padding: 6px 18px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sub);
+  cursor: pointer;
+  transition: all .22s cubic-bezier(.34,1.56,.64,1);
+  border: none;
+  background: none;
+}
+.tab.on {
+  background: var(--pk);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(255,95,160,0.32);
+}
+.header-right { margin-left: auto; display: flex; gap: 8px; -webkit-app-region: no-drag; }
+.icon-btn {
+  background: rgba(255,255,255,0.70);
+  border: none; border-radius: 12px;
+  width: 34px; height: 34px;
+  cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--pk); transition: background .15s, transform .1s;
+  box-shadow: 0 2px 10px rgba(255,100,157,0.13);
+}
+.icon-btn:hover { background: rgba(255,255,255,0.95); }
+.icon-btn:active { transform: scale(.88); }
+
+/* ── 改目标弹层 ── */
+.goal-pop { position: fixed; inset: 0; background: rgba(60,40,80,0.28);
+  display: none; align-items: center; justify-content: center; z-index: 60; }
+.goal-pop.open { display: flex; }
+.goal-pop-card { background: #fff; border-radius: 20px; padding: 20px 18px; width: 256px;
+  box-shadow: 0 16px 44px rgba(255,100,157,0.28); border: 1px solid #ffe0f0;
+  animation: gpIn .25s cubic-bezier(.34,1.56,.64,1); }
+@keyframes gpIn { from { transform: scale(.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.goal-pop-title { font-size: 15px; font-weight: 700; color: #3a3250; text-align: center; margin-bottom: 14px; }
+.goal-input-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 12px; }
+.goal-input-row input { width: 112px; font-size: 24px; font-weight: 800; text-align: center;
+  border: 2px solid #ffafd0; border-radius: 12px; padding: 6px 8px; color: #ff5fa0; outline: none;
+  -moz-appearance: textfield; }
+.goal-input-row input::-webkit-outer-spin-button,
+.goal-input-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.goal-unit { font-size: 14px; color: #9080aa; font-weight: 600; }
+.goal-chips { display: flex; gap: 6px; justify-content: center; margin-bottom: 16px; }
+.goal-chips button { flex: 1; font-size: 12px; font-weight: 700; padding: 7px 0; border-radius: 10px;
+  border: 1px solid #ffe0f0; background: #fff; color: #9080aa; cursor: pointer; transition: all .15s; }
+.goal-chips button:hover { border-color: #ffafd0; color: #ff5fa0; }
+.goal-chips button.on { background: #ff5fa0; color: #fff; border-color: #ff5fa0; }
+.goal-pop-actions { display: flex; gap: 10px; }
+.goal-pop-actions button { flex: 1; font-size: 14px; font-weight: 700; padding: 10px 0; border-radius: 12px;
+  border: none; cursor: pointer; transition: transform .12s; }
+.goal-pop-actions button:active { transform: scale(.95); }
+.gp-cancel { background: #ffe0f0; color: #9080aa; }
+.gp-save { background: linear-gradient(135deg, #ff5fa0, #ff8fc0); color: #fff;
+  box-shadow: 0 4px 14px rgba(255,95,160,0.35); }
+
+/* ── 暂停条 ── */
+.snoozebar {
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #fff9e6, #fff3cd);
+  color: #b07d00;
+  font-size: 12px;
+  padding: 7px 16px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #fde68a;
+}
+.snoozebar.on { display: flex; }
+#resumebtn {
+  background: var(--pk); color: #fff;
+  border: none; border-radius: 20px;
+  padding: 3px 12px; font-size: 11px; font-weight: 700;
+  cursor: pointer;
+}
+
+/* ── 内容区 ── */
+.content {
+  flex: 1; overflow-y: auto; padding: 14px 14px 20px;
+}
+.content::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+.content { scrollbar-width: none; }
+
+/* ── 杯子区 ── */
+.cup-section {
+  background: linear-gradient(160deg, rgba(255,240,250,0.92), rgba(243,232,255,0.80));
+  border: 1px solid var(--card-border);
+  border-radius: 26px;
+  padding: 20px 16px 14px;
+  margin-bottom: 13px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  box-shadow: 0 4px 22px rgba(255,100,157,0.09);
+}
+
+/* 杯子 SVG 眼睛 */
+.eye-n { display: block; }
+.eye-h { display: none; }
+/* 三猫状态切换淡入淡出 */
+#cat-1, #cat-2, #cat-3 { transition: opacity .35s ease; }
+@media (prefers-reduced-motion: reduce) {
+  #cat-1, #cat-2, #cat-3 { transition: none; }
+}
+
+/* 百分比 — 渐变文字 */
+.pct-big {
+  font-size: 38px; font-weight: 900; letter-spacing: -1.5px; line-height: 1;
+  background: linear-gradient(135deg, #ff5fa0, #c084fc);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.ml-row { font-size: 13px; color: var(--sub); }
+.ml-row strong { color: var(--text); font-weight: 700; }
+.goal-tip { font-size: 12px; color: var(--sub); }
+
+/* ── 三个喝水按钮 ── */
+.water-actions { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 13px; }
+.wbtn {
+  position: relative;
+  border: none; border-radius: 20px;
+  padding: 18px 6px;
+  cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  overflow: hidden;
+  transition: transform .13s cubic-bezier(.34,1.56,.64,1), box-shadow .13s;
+}
+/* 顶部高光 — 糖果感 3D */
+.wbtn::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 48%;
+  background: rgba(255,255,255,0.26);
+  border-radius: 20px 20px 60% 60%;
+  pointer-events: none;
+}
+.wbtn:hover { transform: translateY(-3px); }
+.wbtn:active { transform: scale(.90); box-shadow: none !important; }
+.wbtn .num {
+  font-size: 26px; font-weight: 900; color: #fff;
+  text-shadow: 0 2px 5px rgba(0,0,0,0.18);
+  position: relative; z-index: 1; line-height: 1;
+}
+.wbtn .unit {
+  font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.82);
+  position: relative; z-index: 1; letter-spacing: .8px;
+}
+.wbtn-50, .wbtn-100, .wbtn-200 {
+  background: #ffd6e7;
+  box-shadow: 0 8px 18px rgba(255, 100, 150, 0.26);
+}
+.wbtn .num { color: #c94f7a; text-shadow: none; position: relative; z-index: 1; font-size: 26px; font-weight: 900; line-height: 1; }
+.wbtn .unit { color: rgba(201, 79, 122, 0.72); position: relative; z-index: 1; font-size: 11px; font-weight: 700; letter-spacing: .8px; }
+
+/* ── 今日记录 ── */
+.section-label {
+  font-size: 11px; font-weight: 800;
+  color: var(--lv); letter-spacing: .6px;
+  margin-bottom: 7px; text-transform: uppercase;
+}
+.log-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px; overflow: hidden;
+  margin-bottom: 12px;
+  box-shadow: var(--card-shadow);
+}
+.log-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(240,224,248,0.6);
+}
+.log-item:last-child { border-bottom: none; }
+.log-item .de { font-size: 16px; }
+.log-item .ml { font-weight: 700; color: var(--text); font-size: 13px; }
+.log-item .tm { margin-left: auto; font-size: 11px; color: var(--muted); }
+.log-item .del {
+  background: none; border: none; cursor: pointer;
+  font-size: 13px; opacity: .35; transition: opacity .15s; padding: 0 2px;
+}
+.log-item .del:hover { opacity: 1; }
+.empty { padding: 26px; text-align: center; color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+/* ── 成就页 ── */
+.month-card {
+  background: linear-gradient(135deg, #fff5f9, #f5eeff);
+  border: 1px solid var(--card-border);
+  border-radius: 20px; padding: 26px 16px;
+  text-align: center; margin-bottom: 10px;
+  box-shadow: var(--card-shadow);
+}
+.month-num {
+  font-size: 42px; font-weight: 900; line-height: 1;
+  background: linear-gradient(135deg, var(--pk), var(--lv));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.month-sub { font-size: 13px; color: var(--sub); margin-top: 4px; }
+
+/* ── 连续达标 ── */
+.streak-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.streak-card {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 20px; padding: 14px 12px; text-align: center;
+  box-shadow: var(--card-shadow);
+}
+.streak-num {
+  font-size: 26px; font-weight: 900; line-height: 1;
+  background: linear-gradient(135deg, var(--pk), var(--lv));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.streak-sub { font-size: 11px; color: var(--sub); margin-top: 4px; }
+
+.chart-wrap {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 20px; padding: 12px 16px; margin-bottom: 10px;
+  box-shadow: var(--card-shadow);
+}
+.chart { display:flex; align-items:flex-end; gap:6px; height:80px; position:relative; }
+.chart .col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:3px; position:relative; }
+.chart .b {
+  width:100%; max-width:32px; border-radius:8px 8px 0 0;
+  background: linear-gradient(180deg, #a8e6f8, #4ec3e0); min-height:3px;
+  transition: height .4s cubic-bezier(.34,1.56,.64,1);
+}
+.chart .b.ok { background: linear-gradient(180deg, #ffb3d9, #ff5fa0); }
+.chart .d { font-size:9px; color:var(--muted); }
+.goal-line { position:absolute; left:0; right:0; border-top:1.5px dashed var(--pk); opacity:.4; }
+
+/* ── 喝水日历 ── */
+.cal-wrap {
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 20px; padding: 12px 16px;
+  box-shadow: var(--card-shadow);
+}
+.cal-head { margin-bottom: 8px; }
+.cal-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 32px; gap: 2px; text-align: center;
+}
+.cal-dow {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--muted);
+}
+.cal-day {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; font-size: 11px; font-weight: 600; color: var(--sub);
+}
+.cal-day.achieved { background: var(--pk3); font-size: 15px; }
+.cal-day.today { outline: 2px solid var(--pk); outline-offset: 1px; }
+.cal-day.future { color: var(--muted); opacity: 0.4; }
+.cal-day.empty { pointer-events: none; }
+
+/* ── 柱状图数字标签 ── */
+.bar-label {
+  position: absolute; font-size: 9px; font-weight: 700; line-height: 1;
+  left: 0; right: 0; text-align: center; pointer-events: none;
+}
+.bar-label.inside { color: #fff; }
+.bar-label.above  { color: var(--sub); }
+
+/* ── 设置抽屉 ── */
+.drawer { position:fixed; inset:0; z-index:100; display:none; }
+.drawer.open { display:block; }
+.drawer-mask { position:absolute; inset:0; background:rgba(58,50,80,0.25); backdrop-filter:blur(3px); }
+.drawer-panel {
+  position:absolute; right:0; top:0; bottom:0; width:280px;
+  background: linear-gradient(160deg, #fff8fd, #f8f0ff);
+  overflow-y:auto; box-shadow:-6px 0 30px rgba(192,132,252,0.18); padding:22px;
+}
+.drawer-panel::-webkit-scrollbar { width:3px; }
+.drawer-panel::-webkit-scrollbar-thumb { background:var(--pk2); border-radius:4px; }
+.drawer-head { display:flex; align-items:center; margin-bottom:22px; }
+.drawer-head h3 { font-size:17px; font-weight:900; color:var(--text); }
+.close-x {
+  margin-left:auto; background:rgba(255,95,160,0.1); border:none;
+  border-radius:10px; width:30px; height:30px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; cursor:pointer; color:var(--pk);
+  transition: background .15s;
+}
+.close-x:hover { background: rgba(255,95,160,0.2); }
+
+.form-row { margin-bottom:14px; }
+.form-row label { display:block; font-size:11px; font-weight:800; color:var(--sub); margin-bottom:5px; letter-spacing:.3px; }
+.form-row input[type=text],
+.form-row input[type=number],
+.form-row input[type=time] {
+  width:100%; padding:9px 13px;
+  border: 1.5px solid rgba(192,132,252,0.3);
+  border-radius: 12px; font-size:14px; color:var(--text);
+  background: rgba(255,255,255,0.8);
+  outline:none; transition:border-color .15s, box-shadow .15s;
+}
+.form-row input:focus {
+  border-color: var(--lv);
+  box-shadow: 0 0 0 3px rgba(192,132,252,0.15);
+}
+.form-row .hint { font-size:10px; color:var(--muted); margin-top:3px; }
+
+.toggle-row {
+  display:flex; align-items:center;
+  padding:9px 0; border-bottom:1px solid rgba(240,224,248,0.7);
+}
+.toggle-row label { flex:1; font-size:13px; color:var(--text); }
+.toggle-row input[type=checkbox] { width:16px; height:16px; cursor:pointer; accent-color:var(--pk); }
+
+.save-btn {
+  width:100%; padding:13px;
+  background: linear-gradient(135deg, #ff5fa0, #c084fc);
+  color:#fff; font-size:15px; font-weight:800;
+  border:none; border-radius:16px; cursor:pointer; margin-top:18px;
+  box-shadow: 0 6px 18px rgba(255,95,160,0.38);
+  transition: transform .12s, filter .15s;
+}
+.save-btn:hover { filter:brightness(1.06); }
+.save-btn:active { transform: scale(.96); }
+
+/* ── Toast ── */
+.toast {
+  position:fixed; bottom:22px; left:50%;
+  transform:translateX(-50%) translateY(60px);
+  background: linear-gradient(135deg, #3a3250, #5a4880);
+  color:#fff; padding:10px 22px; border-radius:22px;
+  font-size:13px; font-weight:600;
+  z-index:200; opacity:0;
+  transition:all .32s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none; white-space:nowrap;
+  box-shadow: 0 6px 20px rgba(58,50,80,0.35);
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── 顶栏 ── -->
+  <div class="header">
+    <div class="tab-group">
+      <button class="tab on" id="tab-today">今日</button>
+      <button class="tab" id="tab-stats">成就</button>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" id="goalbtn" title="修改每日目标">🎯</button>
+      <button class="icon-btn" id="undo" title="撤销上一次">↩</button>
+      <button class="icon-btn" id="gear" title="设置">⚙</button>
+    </div>
+  </div>
+
+  <!-- 改目标弹层 -->
+  <div class="goal-pop" id="goalPop">
+    <div class="goal-pop-card">
+      <div class="goal-pop-title">🎯 每日喝水目标</div>
+      <div class="goal-input-row">
+        <input type="number" id="goalInput" min="500" max="6000" step="100">
+        <span class="goal-unit">ml</span>
+      </div>
+      <div class="goal-chips" id="goalChips">
+        <button data-v="1500">1500</button>
+        <button data-v="2000">2000</button>
+        <button data-v="2500">2500</button>
+        <button data-v="3000">3000</button>
+      </div>
+      <div class="goal-pop-actions">
+        <button class="gp-cancel" id="goalCancel">取消</button>
+        <button class="gp-save" id="goalSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 暂停条 -->
+  <div class="snoozebar" id="snoozebar">
+    <span id="snoozetext">提醒已暂停</span>
+    <button id="resumebtn">恢复提醒</button>
+  </div>
+
+  <!-- ════ 今日页 ════ -->
+  <div class="content" id="page-today">
+
+    <!-- 杯子区 -->
+    <div class="cup-section">
+      <!-- 杯子 v6：圆柱裁剪合成 cup.png + water_crop -->
+      <!-- 坐标系=素材原始 1536×1024；水区 POOL_TOP=207 POOL_BOT=700 WH=493 -->
+      <svg class="cat-cup" id="cupSvg" width="300" height="247" viewBox="200 40 1140 940" overflow="visible">
+        <defs>
+          <!-- 水体裁剪：限宽在杯内 x=278-1237，底部透视由 water_crop.png 椭圆透明区承担 -->
+          <clipPath id="waterClip">
+            <rect x="278" y="0" width="959" height="1024"/>
+          </clipPath>
+          <!-- 猫：限制在杯子侧壁内，纵向宽松允许猫_3 伸出杯口 -->
+          <clipPath id="catClip">
+            <rect x="255" y="-120" width="1000" height="1000"/>
+          </clipPath>
+        </defs>
+
+        <!-- 沙色垫片（最底层）：cup.png 沙面中部是抠白留下的透明区，
+             垫片透过它显示沙色；猫画在垫片前、被 cup.png 沙缘盖住底边形成趴底遮挡 -->
+        <ellipse cx="758" cy="728" rx="470" ry="55" fill="#f4edda"/>
+
+        <!-- 水体（圆柱形裁剪，y 随水位动态调整） -->
+        <g clip-path="url(#waterClip)">
+          <image id="water" href="build/water_crop.png" x="278" y="700" width="959" height="60" preserveAspectRatio="none" style="filter:saturate(0.6) brightness(1.06)"/>
+        </g>
+
+        <!-- 三猫（catClip 防止超出杯壁范围；opacity 由 JS 控制淡入淡出） -->
+        <g clip-path="url(#catClip)">
+          <image id="cat-1" href="build/cat_1s.png" x="416" y="255" width="684" height="741"/>
+          <image id="cat-2" href="build/cat_2s.png" x="416" y="255" width="684" height="741" style="opacity:0"/>
+          <image id="cat-3" href="build/cat_3s.png" x="416" y="-197" width="684" height="741" style="opacity:0"/>
+        </g>
+
+        <!-- 杯子覆层（最顶层：杯壁/沙/草盖在水和猫前） -->
+        <image href="build/cup.png" x="0" y="0" width="1536" height="1024"/>
+      </svg>
+
+      <div class="pct-big" id="pctbig">0%</div>
+      <div class="ml-row"><strong id="curml">0</strong> / <span id="goalml">2000</span> ml</div>
+      <div class="goal-tip" id="goaltip">还差 2000ml 达标</div>
+    </div>
+
+    <!-- 喝水按钮 -->
+    <div class="water-actions">
+      <button class="wbtn wbtn-50" id="btn-50">
+        <span class="num">50</span>
+        <span class="unit">ml</span>
+      </button>
+      <button class="wbtn wbtn-100" id="btn-100">
+        <span class="num">100</span>
+        <span class="unit">ml</span>
+      </button>
+      <button class="wbtn wbtn-200" id="btn-200">
+        <span class="num">200</span>
+        <span class="unit">ml</span>
+      </button>
+    </div>
+
+    <!-- 今日记录 -->
+    <div class="section-label">今日记录</div>
+    <div class="log-card" id="loglist"></div>
+
+  </div>
+
+  <!-- ════ 成就页 ════ -->
+  <div class="content" id="page-stats" style="display:none">
+    <div class="month-card">
+      <div class="month-num" id="month-num">0</div>
+      <div class="month-sub">🐾 本月达标天数</div>
+    </div>
+
+    <div class="streak-row">
+      <div class="streak-card">
+        <div class="streak-num" id="streak-num">0</div>
+        <div class="streak-sub">🔥 当前连续达标</div>
+      </div>
+      <div class="streak-card">
+        <div class="streak-num" id="best-num">0</div>
+        <div class="streak-sub">🏆 最佳连续</div>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <div class="section-label" style="margin-bottom:5px">最近7天</div>
+      <div id="chart" class="chart"></div>
+    </div>
+
+    <div class="cal-wrap">
+      <div class="cal-head"><span class="section-label" id="cal-title"></span></div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+  </div>
+
+</div><!-- .app -->
+
+<!-- 设置抽屉 -->
+<div class="drawer" id="drawer">
+  <div class="drawer-mask"></div>
+  <div class="drawer-panel">
+    <div class="drawer-head">
+      <h3>设置</h3>
+      <button class="close-x" id="closex">×</button>
+    </div>
+    <div class="form-row">
+      <label>每日目标 (ml)</label>
+      <input type="number" id="s_goal" min="500" max="6000" value="2000">
+    </div>
+    <div class="form-row">
+      <label>提醒间隔 (分钟)</label>
+      <input type="number" id="s_interval" min="10" max="240" value="60">
+    </div>
+    <div class="form-row">
+      <label>提醒时段 开始</label>
+      <input type="time" id="s_start" value="08:00">
+    </div>
+    <div class="form-row">
+      <label>提醒时段 结束</label>
+      <input type="time" id="s_end" value="22:00">
+    </div>
+    <div class="form-row">
+      <label>杯子规格 (逗号分隔，备用)</label>
+      <input type="text" id="s_cups" value="50,100,200,300,500">
+      <div class="hint">主页只显示50/100/200ml三个固定按钮</div>
+    </div>
+    <div class="form-row">
+      <label>昵称</label>
+      <input type="text" id="s_nick" value="老婆sama" maxlength="20">
+    </div>
+    <div class="toggle-row">
+      <label>吸边功能</label>
+      <input type="checkbox" id="s_snap" checked>
+    </div>
+    <div class="toggle-row">
+      <label>桌面通知</label>
+      <input type="checkbox" id="s_toast">
+    </div>
+    <div class="toggle-row">
+      <label>提示音</label>
+      <input type="checkbox" id="s_sound">
+    </div>
+    <div class="toggle-row">
+      <label>开机自启</label>
+      <input type="checkbox" id="s_auto">
+    </div>
+    <button class="save-btn" id="save">保存</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="store.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -292,3 +292,11 @@ cup.png / water_crop.png 仍在磁盘，直接还原。
 - cup.png 回退到有洞版本（git checkout 91bb345）
 - SVG 最底层加沙色垫片 ellipse(cx758 cy728 rx470 ry55 #f4edda)，无猫时洞透出沙色，有水时半透明水叠在垫片上呈水下沙色，猫画在垫片前、底边被 cup.png 沙缘遮挡形成趴底效果
 - index.html + floating.html 同步
+
+## 2026-07-17 00:18
+安卓版打包完成（mobile/）：
+- 架构：Capacitor 8 封装，www/ 复用桌面版界面，store.js 用 localStorage 实现 window.api 同款接口（业务逻辑复刻主进程），提醒走 @capacitor/local-notifications 排未来48h通知
+- 工具链全部国内镜像（google/adoptium 直连均 TLS 失败）：JDK21+JDK17 华为 repo、cmdline-tools/platform-36/build-tools-36 腾讯 AndroidSDK 镜像、maven google() 换华为镜像
+- 踩坑：Capacitor 8 要求 JDK21（先下了17返工）；build-tools zip 解压目录名 android-16 需重命名为 36.0.0；镜像是 Nexus 代理不能列目录，文件名靠试探
+- 移动版网页在浏览器实测通过（加水/渲染/勋章）；APK 8MB，产物 mobile/android/app/build/outputs/apk/debug/app-debug.apk，已复制桌面
+- README 补安卓版章节；.gitignore 排除 gradle 构建产物
